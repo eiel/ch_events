@@ -1,6 +1,7 @@
 import java.net.URL
 
 import akka.actor.ActorSystem
+import akka.event.Logging
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
@@ -29,7 +30,9 @@ trait Routes {
       val roomId = config.getInt("orunka.roomId")
       app.subscribe(ChatWorkPublisher.props(roomId, ChatWork(token), config))
     }
+
     healthRoute ~ // GET /_ah/health
+      startRoute ~
       pathSingleSlash {
         get {
           // GET /
@@ -46,6 +49,18 @@ trait Routes {
     pathPrefix("_ah") {
       path("health") {
         get {
+          complete("")
+        }
+      }
+    }
+  }
+
+  private def startRoute(implicit system: ActorSystem): Route = {
+    val logger = Logging(system,"routes")
+    pathPrefix("_ah") {
+      path ("start") {
+        get {
+          logger.info("/_ah/start")
           complete("")
         }
       }
