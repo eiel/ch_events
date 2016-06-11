@@ -1,19 +1,18 @@
 import java.net.URL
 
 import akka.actor.ActorSystem
-import akka.event.Logging
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
 import chatwork.ChatWork
 import chatwork.ChatWork._
 import com.typesafe.config.{Config, ConfigFactory}
+import gae.GAERoute
 import orunka.adapter.ChatWorkPublisher
 
 import scala.concurrent.ExecutionContext
 
-trait Routes {
+trait Routes extends GAERoute {
   def routes(implicit actorSystem: ActorSystem, actorMaterializer: ActorMaterializer) = {
     import orunka._
     implicit val ec: ExecutionContext = actorSystem.dispatcher
@@ -31,9 +30,7 @@ trait Routes {
       app.subscribe(ChatWorkPublisher.props(roomId, ChatWork(token), config))
     }
 
-    healthRoute ~ // GET /_ah/health
-      startRoute ~
-      stopRoute ~
+    gaeRoutes ~
       pathSingleSlash {
         get {
           // GET /
@@ -44,44 +41,6 @@ trait Routes {
         // GET /orunka
         OrunkaRoute(app)
       }
-  }
-
-  private val healthRoute: Route = {
-    pathPrefix("_ah") {
-      path("health") {
-        get {
-          complete("")
-        }
-      }
-    }
-  }
-
-  private def startRoute(implicit system: ActorSystem): Route = {
-    val logger = Logging(system,"routes")
-    pathPrefix("_ah") {
-      path ("start") {
-        get {
-          logger.info("/_ah/start")
-          complete("")
-        }
-      }
-    }
-  }
-
-  private def stopRoute(implicit system: ActorSystem): Route = {
-    val logger = Logging(system,"routes")
-    pathPrefix("_ah") {
-      path ("stop") {
-        get {
-          logger.info("/_ah/stop")
-          implicit val ec: ExecutionContext = system.dispatcher
-          system.terminate().foreach { _ =>
-            logger.info("terminate")
-          }
-          complete("")
-        }
-      }
-    }
   }
 
   private def index() = complete(
