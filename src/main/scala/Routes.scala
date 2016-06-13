@@ -3,6 +3,7 @@ import java.net.URL
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
 import chatwork.ChatWork
 import chatwork.ChatWork._
@@ -13,14 +14,15 @@ import orunka.adapter.ChatWorkPublisher
 import scala.concurrent.ExecutionContext
 
 trait Routes extends GAERoute {
-  def routes(implicit actorSystem: ActorSystem, actorMaterializer: ActorMaterializer) = {
+  def orunka(implicit actorSystem: ActorSystem, actorMaterializer: ActorMaterializer): Route = {
     import orunka._
     implicit val ec: ExecutionContext = actorSystem.dispatcher
+
     val app = OrunkaApplication.create()
 
     for {
       token <- getChatWorkAPITokenFromEnv
-    } {
+    } yield {
       val config: Config = sys.env.get("ORUNKA_CONF_URI").fold {
         ConfigFactory.parseFile(new java.io.File("orunka.conf"))
       } { uri =>
@@ -30,6 +32,10 @@ trait Routes extends GAERoute {
       app.subscribe(ChatWorkPublisher.props(roomId, ChatWork(token), config))
     }
 
+    OrunkaRoute(app)
+  }
+
+  def routes(implicit actorSystem: ActorSystem, actorMaterializer: ActorMaterializer) = {
     gaeRoutes ~
       pathSingleSlash {
         get {
@@ -39,7 +45,7 @@ trait Routes extends GAERoute {
       } ~
       pathPrefix("orunka") {
         // GET /orunka
-        OrunkaRoute(app)
+        orunka
       }
   }
 
