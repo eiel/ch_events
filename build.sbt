@@ -8,7 +8,9 @@ libraryDependencies ++= {
   var akkaVersion = "2.4.11"
   Seq(
     "com.typesafe.akka" %% "akka-http-core" % akkaVersion,
-    "com.typesafe.akka" %% "akka-http-experimental" % akkaVersion
+    "com.typesafe.akka" %% "akka-http-experimental" % akkaVersion,
+    "com.typesafe.akka" %% "akka-http-experimental" % akkaVersion,
+    "com.typesafe.akka" %% "akka-http-spray-json-experimental" % akkaVersion
   )
 }
 
