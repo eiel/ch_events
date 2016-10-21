@@ -9,7 +9,10 @@ import scala.collection.immutable
 import scala.concurrent.Future
 import spray.json._
 import akka.NotUsed
-import akka.stream.scaladsl.{Flow, JsonFraming, Source}
+import akka.http.scaladsl.Http.HostConnectionPool
+import akka.stream.scaladsl.{Flow, JsonFraming, Sink, Source}
+
+import scala.util.Try
 
 class ChatWork {
 
@@ -55,18 +58,26 @@ object ChatWork {
 
     val jsonFraming: Flow[ByteString, ByteString, NotUsed] = JsonFraming.objectScanner(100000)
 
-    Http().singleRequest(request)
-      .map{ req =>
-        req.entity.dataBytes.via(jsonFraming).map { bstr =>
+    val connectionPoolFlow: Flow[(HttpRequest, Int), (Try[HttpResponse], Int), HostConnectionPool] = Http().cachedHostConnectionPoolHttps[Int]("api.chatwork.com")
+
+    def responseToMessage(response: HttpResponse): Source[Message, Any] = {
+      response.entity.dataBytes.via(jsonFraming).map { bstr =>
           val str = bstr.decodeString("UTF-8")
           str.parseJson.convertTo[MessageJson].toMessage
         }
+    }
+
+    Source.single(request -> 42)
+      .via(connectionPoolFlow)
+      .runWith(Sink.head)
+      .flatMap { case (tryResponse, _) =>
+        Future.fromTry(tryResponse.map(responseToMessage))
       }
   }
 
   def requestMessages(roomId: Int, token: String): HttpRequest = {
     HttpRequest(
-      uri = s"https://api.chatwork.com/v1/rooms/$roomId/messages",
+      uri = s"/v1/rooms/$roomId/messages",
       headers = immutable.Seq(chatWorkTokenHeader(token))
     )
   }
