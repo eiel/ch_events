@@ -58,7 +58,12 @@ object ChatWork {
 
     val jsonFraming: Flow[ByteString, ByteString, NotUsed] = JsonFraming.objectScanner(100000)
 
-    val connectionPoolFlow: Flow[(HttpRequest, Int), (Try[HttpResponse], Int), HostConnectionPool] = Http().cachedHostConnectionPoolHttps[Int]("api.chatwork.com")
+    def requestMessages(roomId: Int, token: String): HttpRequest = {
+      HttpRequest(
+        uri = s"/v1/rooms/$roomId/messages",
+        headers = immutable.Seq(chatWorkTokenHeader(token))
+      )
+    }
 
     def responseToMessage(response: HttpResponse): Source[Message, Any] = {
       response.entity.dataBytes.via(jsonFraming).map { bstr =>
@@ -67,18 +72,13 @@ object ChatWork {
         }
     }
 
+    val connectionPoolFlow: Flow[(HttpRequest, Int), (Try[HttpResponse], Int), HostConnectionPool] = Http().cachedHostConnectionPoolHttps[Int]("api.chatwork.com")
+
     Source.single(request -> 42)
       .via(connectionPoolFlow)
       .runWith(Sink.head)
       .flatMap { case (tryResponse, _) =>
         Future.fromTry(tryResponse.map(responseToMessage))
       }
-  }
-
-  def requestMessages(roomId: Int, token: String): HttpRequest = {
-    HttpRequest(
-      uri = s"/v1/rooms/$roomId/messages",
-      headers = immutable.Seq(chatWorkTokenHeader(token))
-    )
   }
 }
