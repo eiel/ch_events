@@ -1,0 +1,10 @@
+runtime: custom
+vm: true
+service: default
+threadsafe: true
+beta_settings:
+  machine_type: f1-micro
+manual_scaling:
+  instances: 1
+env_variables:
+  CHATWORK_API_TOKEN: ''

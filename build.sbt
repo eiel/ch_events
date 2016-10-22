@@ -15,3 +15,5 @@ libraryDependencies ++= {
 }
 
 cancelable in Global := true
+
+assemblyJarName in assembly := "ch_events.jar"
