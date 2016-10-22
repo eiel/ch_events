@@ -1,17 +1,18 @@
+package ChatWork
+
+import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.Http.HostConnectionPool
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{DateTime, HttpHeader, HttpRequest, HttpResponse}
 import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.{Flow, JsonFraming, Sink, Source}
 import akka.util.ByteString
+import spray.json._
 
 import scala.collection.immutable
-import scala.concurrent.Future
-import spray.json._
-import akka.NotUsed
-import akka.http.scaladsl.Http.HostConnectionPool
-import akka.stream.scaladsl.{Flow, JsonFraming, Sink, Source}
-
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 class ChatWork {
@@ -19,6 +20,12 @@ class ChatWork {
 }
 
 object ChatWork {
+  case class APIToken(token: String)
+
+  def getChatWorkAPITokenFromEnv: Option[APIToken] = {
+    sys.env.get("CHATWORK_API_TOKEN").map(APIToken.apply)
+  }
+
   case class AccountJson(account_id: Long, name: String, avatar_image_url: ImageUrl) {
     def toAccount: Account = Account(AccountId(account_id), name, avatar_image_url)
   }
@@ -47,23 +54,19 @@ object ChatWork {
 
   def chatWorkTokenHeader(token: String): HttpHeader = RawHeader("X-ChatWorkToken", token)
 
-  def queryMessages(roomId: Int, token: String): Future[Source[Message, Any]] = {
+  def queryMessages(roomId: Int, token: APIToken)(implicit actorSystem: ActorSystem, materializer: ActorMaterializer, ec: ExecutionContext): Future[Source[Message, Any]] = {
     val n = new _JsonFormat {}
     import n._
 
-    val request = requestMessages(roomId, token)
-    implicit val system = ActorSystem()
-    implicit val materializer = ActorMaterializer()
-    import scala.concurrent.ExecutionContext.Implicits.global
-
-    val jsonFraming: Flow[ByteString, ByteString, NotUsed] = JsonFraming.objectScanner(100000)
-
-    def requestMessages(roomId: Int, token: String): HttpRequest = {
+    def requestMessages(roomId: Int, token: APIToken): HttpRequest = {
       HttpRequest(
         uri = s"/v1/rooms/$roomId/messages",
-        headers = immutable.Seq(chatWorkTokenHeader(token))
+        headers = immutable.Seq(chatWorkTokenHeader(token.token))
       )
     }
+
+    val request: HttpRequest = requestMessages(roomId, token)
+    val jsonFraming: Flow[ByteString, ByteString, NotUsed] = JsonFraming.objectScanner(100000)
 
     def responseToMessage(response: HttpResponse): Source[Message, Any] = {
       response.entity.dataBytes.via(jsonFraming).map { bstr =>
