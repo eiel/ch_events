@@ -34,7 +34,7 @@ object OrunkaRoute {
   }
 
   def putMembers(request: String)(implicit app: OrunkaApplication): Route = {
-    val members = request.split(",")
+    val members = request.split(",").toSet
     app.setMembers(members)
     complete("Success")
   }

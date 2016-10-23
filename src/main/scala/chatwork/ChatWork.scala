@@ -9,17 +9,26 @@ import akka.http.scaladsl.model._
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, JsonFraming, Sink, Source}
 import akka.util.ByteString
+import chatwork.ChatWork.APIToken
 import spray.json._
 
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
-class ChatWork {
+trait ChatWork {
+  def commandCreateMessage(text: String, roomId: Int): Unit
+}
 
+case class ChatWorkImpl(apiToken: APIToken)(implicit val system: ActorSystem, val materializer: ActorMaterializer) extends ChatWork {
+  override def commandCreateMessage(text: String, roomId: Int): Unit = {
+    implicit val ec: ExecutionContext = system.dispatcher
+    ChatWork.commandCreateMessage(text, roomId, apiToken)
+  }
 }
 
 object ChatWork {
+  def apply(apiToken: APIToken)(implicit system: ActorSystem, materializer: ActorMaterializer): ChatWork = new ChatWorkImpl(apiToken)
   case class APIToken(token: String)
 
   def getChatWorkAPITokenFromEnv: Option[APIToken] = {
@@ -100,7 +109,6 @@ object ChatWork {
 
     val connectionPoolFlow: Flow[(HttpRequest, Int), (Try[HttpResponse], Int), HostConnectionPool] = Http().cachedHostConnectionPoolHttps[Int]("api.chatwork.com")
     val request = requestCreateMessage(text, roomId, token)
-    println(request)
     Source.single(request -> 42)
       .via(connectionPoolFlow)
       .runWith(Sink.head)
