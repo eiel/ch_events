@@ -5,7 +5,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.HostConnectionPool
 import akka.http.scaladsl.model.headers.RawHeader
-import akka.http.scaladsl.model.{DateTime, HttpHeader, HttpRequest, HttpResponse}
+import akka.http.scaladsl.model._
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, JsonFraming, Sink, Source}
 import akka.util.ByteString
@@ -54,7 +54,8 @@ object ChatWork {
 
   def chatWorkTokenHeader(token: String): HttpHeader = RawHeader("X-ChatWorkToken", token)
 
-  def queryMessages(roomId: Int, token: APIToken)(implicit actorSystem: ActorSystem, materializer: ActorMaterializer, ec: ExecutionContext): Future[Source[Message, Any]] = {
+  def queryMessages(roomId: Int, token: APIToken)
+                   (implicit actorSystem: ActorSystem, materializer: ActorMaterializer, ec: ExecutionContext): Future[Source[Message, Any]] = {
     val n = new _JsonFormat {}
     import n._
 
@@ -83,5 +84,25 @@ object ChatWork {
       .flatMap { case (tryResponse, _) =>
         Future.fromTry(tryResponse.map(responseToMessage))
       }
+  }
+
+  def commandCreateMessage(text: String, roomId: Int, token: APIToken)
+    (implicit actorSystem: ActorSystem, materializer: ActorMaterializer, ec: ExecutionContext): Future[(Try[HttpResponse], Int)] = {
+
+    def requestCreateMessage(message: String, roomId: Int, token: APIToken): HttpRequest = {
+      HttpRequest(
+        method = HttpMethods.POST,
+        uri = s"/v1/rooms/$roomId/messages",
+        headers = immutable.Seq(chatWorkTokenHeader(token.token)),
+        entity = FormData("body" -> message).toEntity
+      )
+    }
+
+    val connectionPoolFlow: Flow[(HttpRequest, Int), (Try[HttpResponse], Int), HostConnectionPool] = Http().cachedHostConnectionPoolHttps[Int]("api.chatwork.com")
+    val request = requestCreateMessage(text, roomId, token)
+    println(request)
+    Source.single(request -> 42)
+      .via(connectionPoolFlow)
+      .runWith(Sink.head)
   }
 }
