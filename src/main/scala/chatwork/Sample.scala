@@ -1,4 +1,4 @@
-package ChatWork
+package chatwork
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer

@@ -1,4 +1,4 @@
-package ChatWork
+package chatwork
 
 import akka.NotUsed
 import akka.actor.ActorSystem
@@ -70,9 +70,9 @@ object ChatWork {
 
     def responseToMessage(response: HttpResponse): Source[Message, Any] = {
       response.entity.dataBytes.via(jsonFraming).map { bstr =>
-          val str = bstr.decodeString("UTF-8")
-          str.parseJson.convertTo[MessageJson].toMessage
-        }
+        val str = bstr.decodeString("UTF-8")
+        str.parseJson.convertTo[MessageJson].toMessage
+      }
     }
 
     val connectionPoolFlow: Flow[(HttpRequest, Int), (Try[HttpResponse], Int), HostConnectionPool] = Http().cachedHostConnectionPoolHttps[Int]("api.chatwork.com")
