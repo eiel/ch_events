@@ -1,3 +1,5 @@
+import java.net.URL
+
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
@@ -5,6 +7,7 @@ import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
 import chatwork.ChatWork
 import chatwork.ChatWork._
+import com.typesafe.config.{Config, ConfigFactory}
 import orunka.adapter.ChatWorkPublisher
 
 import scala.concurrent.ExecutionContext
@@ -19,7 +22,12 @@ trait Routes {
       token <- getChatWorkAPITokenFromEnv
       roomId <- sys.env.get("ROOM_ID").map(_.toInt)
     } {
-      app.subscribe(ChatWorkPublisher.props(roomId, ChatWork(token)))
+      val config: Config = sys.env.get("ORUNKA_CONF_URI").fold {
+        ConfigFactory.parseFile(new java.io.File("orunka.conf"))
+      } { uri =>
+        ConfigFactory.parseURL(new URL(uri))
+      }
+      app.subscribe(ChatWorkPublisher.props(roomId, ChatWork(token), config))
     }
     healthRoute ~ // GET /_ah/health
       pathSingleSlash {
@@ -28,7 +36,8 @@ trait Routes {
           index()
         }
       } ~
-      pathPrefix("orunka") { // GET /orunka
+      pathPrefix("orunka") {
+        // GET /orunka
         OrunkaRoute(app)
       }
   }
