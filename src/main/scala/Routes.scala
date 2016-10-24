@@ -20,13 +20,13 @@ trait Routes {
 
     for {
       token <- getChatWorkAPITokenFromEnv
-      roomId <- sys.env.get("ROOM_ID").map(_.toInt)
     } {
       val config: Config = sys.env.get("ORUNKA_CONF_URI").fold {
         ConfigFactory.parseFile(new java.io.File("orunka.conf"))
       } { uri =>
         ConfigFactory.parseURL(new URL(uri))
       }
+      val roomId = config.getInt("orunka.roomId")
       app.subscribe(ChatWorkPublisher.props(roomId, ChatWork(token), config))
     }
     healthRoute ~ // GET /_ah/health

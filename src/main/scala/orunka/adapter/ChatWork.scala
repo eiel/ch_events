@@ -40,7 +40,7 @@ class ChatWorkPublisher(val roomId: Int, chatwork: ChatWork, config: Config) ext
 
   def getName(member: String): Option[String] = {
     val path = member.replaceAll(":", "")
-    val abs_path = s"macs.$path"
+    val abs_path = s"orunka.macs.$path"
     val aid: Option[Int] = if (config.hasPath(abs_path)) {
       Some(config.getInt(abs_path))
     } else {
