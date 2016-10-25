@@ -1,6 +1,0 @@
-FROM gcr.io/google_appengine/openjdk8
-
-ADD /target/scala-2.11/ch_events.jar ch_events.jar
-EXPOSE 8080
-
-CMD java -jar ch_events.jar
