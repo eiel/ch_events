@@ -33,6 +33,7 @@ trait Routes {
 
     healthRoute ~ // GET /_ah/health
       startRoute ~
+      stopRoute ~
       pathSingleSlash {
         get {
           // GET /
@@ -61,6 +62,22 @@ trait Routes {
       path ("start") {
         get {
           logger.info("/_ah/start")
+          complete("")
+        }
+      }
+    }
+  }
+
+  private def stopRoute(implicit system: ActorSystem): Route = {
+    val logger = Logging(system,"routes")
+    pathPrefix("_ah") {
+      path ("stop") {
+        get {
+          logger.info("/_ah/stop")
+          implicit val ec: ExecutionContext = system.dispatcher
+          system.terminate().foreach { _ =>
+            logger.info("terminate")
+          }
           complete("")
         }
       }
